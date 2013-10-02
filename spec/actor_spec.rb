@@ -6,6 +6,8 @@ class User
   attr_accessor :id
 end
 
+
+
 describe Timeline::Actor do
   describe "when included" do
     before { @user = User.new }

@@ -8,6 +8,7 @@ class Post
   define_model_callbacks :create
   attr_accessor :id, :to_param, :creator_id, :name
 
+  include Timeline::Target
   include Timeline::Track
   track :new_post
 
@@ -28,17 +29,29 @@ class Post
   def to_s
     name
   end
+  
+  
+  class << self
+    def find post_id
+      Post.new(id: post_id)
+    end
+  end
+  
+  
 end
+
+
+
 
 class Comment
   extend ActiveModel::Callbacks
 
   define_model_callbacks :create
-  attr_accessor :id, :creator_id, :body
+  attr_accessor :id, :creator_id, :body, :post_id
 
   include Timeline::Track
 
-  track :new_comment, object: [:post_name, :post_id, :body], mentionable: :body
+  track :new_comment, object: [:post_name, :post_id, :body], target: :post, mentionable: :body
 
   def initialize(options={})
     @creator_id = options.delete :creator_id
@@ -50,12 +63,13 @@ class Comment
     true
   end
 
-  def post_id
-    1
+  
+  def post
+    Post.find(post_id)
   end
-
+  
   def post_name
-    "My Post"
+    post.name
   end
 
   def creator
@@ -65,7 +79,12 @@ class Comment
   def to_s
     "Comment"
   end
+  
+  
+  
 end
+
+
 
 class User
   include Timeline::Actor
@@ -87,10 +106,14 @@ class User
   end
 end
 
+
+
+
+
 describe Timeline::Track do
   let(:creator) { User.new(id: 1, username: "first_user") }
   let(:post) { Post.new(creator_id: creator.id, name: "New post") }
-  let(:comment) { Comment.new(creator_id: creator.id, id: 1) }
+  let(:comment) { Comment.new(creator_id: creator.id, id: 1, post_id: post.id) }
 
   describe "included in an ActiveModel-compliant class" do
     it "tracks on create by default" do
@@ -120,6 +143,15 @@ describe Timeline::Track do
       follower.timeline.last.verb.should == "new_post"
       follower.timeline.last.actor.id.should == 1
     end
+    
+    it "adds the activity to the target's timeline" do
+      comment.save
+      comment.post.id.should == post.id
+      post.activities.last.should be_kind_of(Timeline::Activity)
+    end
+    
+    
+    
   end
 
   describe "with extra_fields" do
