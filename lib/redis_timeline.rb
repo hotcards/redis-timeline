@@ -5,6 +5,7 @@ require 'timeline/config'
 require 'timeline/helpers'
 require 'timeline/track'
 require 'timeline/actor'
+require 'timeline/target'
 require 'timeline/activity'
 
 module Timeline
